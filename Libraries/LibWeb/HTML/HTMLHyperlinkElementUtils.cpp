@@ -530,22 +530,17 @@ void HTMLHyperlinkElementUtils::download_hyperlink(Optional<String> hyperlink_su
         return;
 
     // 3. Let urlString be the result of encoding-parsing-and-serializing a URL given subject's href attribute value, relative to subject's node document.
-    auto url = hyperlink_element_utils_document().parse_url(href());
+    auto url_string = hyperlink_element_utils_document().encoding_parse_and_serialize_url(href());
 
     // 4. If urlString is failure, then return.
-    if (!url.is_valid())
+    if (!url_string.has_value())
         return;
 
-    auto url_string = MUST(url.to_string());
-
     // 5. If hyperlinkSuffix is non-null, then append it to urlString.
-    if (hyperlink_suffix.has_value()) {
-        StringBuilder url_builder;
-        url_builder.append(url_string);
-        url_builder.append(*hyperlink_suffix);
+    if (hyperlink_suffix.has_value())
+        url_string = MUST(String::formatted("{}{}", *url_string, *hyperlink_suffix));
 
-        url_string = MUST(url_builder.to_string());
-    }
+    auto url = URL::URL(*url_string);
 
     // 6. If userInvolvement is not "browser UI", then:
     if (user_involvement != UserNavigationInvolvement::BrowserUI) {
@@ -559,7 +554,7 @@ void HTMLHyperlinkElementUtils::download_hyperlink(Optional<String> hyperlink_su
         auto filename = hyperlink_element_utils_element().attribute(HTML::AttributeNames::download).value_or(String {});
 
         // 4. Let continue be the result of firing a download request navigate event at navigation with destinationURL set to urlString, userInvolvement set to userInvolvement, and filename set to filename.
-        bool continue_ = navigation->fire_a_download_request_navigate_event(url_string, user_involvement, filename);
+        bool continue_ = navigation->fire_a_download_request_navigate_event(url, user_involvement, filename);
 
         // 5. If continue is false, then return.
         if (!continue_)
